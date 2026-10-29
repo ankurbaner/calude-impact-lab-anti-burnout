@@ -133,6 +133,47 @@ const formatMinutes = (seconds: number): string => {
   return `${h}h${String(m % 60).padStart(2, "0")}`;
 };
 
+/**
+ * macOS shows the stretch as menu-bar text via `setTitle`. Windows and Linux
+ * have no tray text, so they need a visible icon and put the stretch in the
+ * tooltip instead.
+ */
+const IS_MAC = process.platform === "darwin";
+
+/**
+ * Draw a filled circle as a 32×32 bitmap (scale factor 2 → 16pt tray icon).
+ * R and B are kept equal so the colour is the same whether the platform
+ * reads the buffer as RGBA or BGRA.
+ */
+const circleIcon = (rb: number, g: number): Electron.NativeImage => {
+  const size = 32;
+  const buf = Buffer.alloc(size * size * 4);
+  const c = (size - 1) / 2;
+  const r = size / 2 - 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.hypot(x - c, y - c);
+      // 1px soft edge for anti-aliasing.
+      const alpha = Math.max(0, Math.min(1, r - d + 0.5));
+      const i = (y * size + x) * 4;
+      // Premultiplied alpha, as Skia expects.
+      buf[i] = Math.round(rb * alpha);
+      buf[i + 1] = Math.round(g * alpha);
+      buf[i + 2] = Math.round(rb * alpha);
+      buf[i + 3] = Math.round(255 * alpha);
+    }
+  }
+  return nativeImage.createFromBitmap(buf, { width: size, height: size, scaleFactor: 2 });
+};
+
+const ICONS = IS_MAC
+  ? null
+  : {
+      active: circleIcon(80, 175), // green
+      onBreak: circleIcon(150, 150), // grey
+      paused: circleIcon(200, 200), // light grey
+    };
+
 const refreshTray = (): void => {
   if (!tray) return;
   const title = paused
@@ -140,7 +181,18 @@ const refreshTray = (): void => {
     : state.onBreak
       ? "☕︎ on a break"
       : `👁 ${formatMinutes(state.currentStretchSeconds)}`;
-  tray.setTitle(` ${title}`);
+  if (IS_MAC) {
+    tray.setTitle(` ${title}`);
+  } else if (ICONS) {
+    tray.setImage(paused ? ICONS.paused : state.onBreak ? ICONS.onBreak : ICONS.active);
+    tray.setToolTip(
+      paused
+        ? "Anti-Burnout — paused"
+        : state.onBreak
+          ? "Anti-Burnout — on a break"
+          : `Anti-Burnout — this stretch: ${formatMinutes(state.currentStretchSeconds)} · today: ${formatMinutes(state.todayActiveSeconds)}`,
+    );
+  }
 
   const menu = Menu.buildFromTemplate([
     {
@@ -247,8 +299,10 @@ if (!gotLock) {
       state = { ...state, dayKey: fresh.dayKey, todayActiveSeconds: 0 };
     }
 
-    tray = new Tray(nativeImage.createEmpty());
+    tray = new Tray(ICONS ? ICONS.active : nativeImage.createEmpty());
     tray.setToolTip("Anti-Burnout — real screen time, with recovery nudges");
+    // On Windows a left-click doesn't open the context menu by default.
+    if (!IS_MAC) tray.on("click", () => tray?.popUpContextMenu());
 
     ipcMain.on("card:done", () => hideCard());
     ipcMain.on("card:snooze", () => {
