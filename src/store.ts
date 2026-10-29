@@ -11,12 +11,32 @@ import { TrackerConfig, TrackerState, DEFAULT_CONFIG } from "./tracker";
 export interface AppConfig extends TrackerConfig {
   /** Minutes a "Snooze" push the next reminder back by. */
   snoozeMinutes: number;
+  /**
+   * Ask Claude to write the card instead of using the built-in library.
+   * Off by default: it requires an API key and it sends coarse counters off
+   * the machine, so it must be a deliberate choice, never a surprise.
+   */
+  useClaude: boolean;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   ...DEFAULT_CONFIG,
   snoozeMinutes: 5,
+  useClaude: false,
 };
+
+/**
+ * Drop a leading UTF-8 byte-order mark.
+ *
+ * Notepad and PowerShell's `Out-File -Encoding utf8` both prepend one, and
+ * `JSON.parse` throws on it. Since the README invites users to hand-edit
+ * config.json, swallowing that would silently discard their settings.
+ *
+ * @param raw - File contents as read from disk.
+ * @returns The same text without a leading BOM.
+ */
+const stripBom = (raw: string): string =>
+  raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
 
 /**
  * Read a JSON file, returning a fallback when it is missing or malformed.
@@ -28,7 +48,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 const readJson = <T>(filePath: string, fallback: T): T => {
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return { ...fallback, ...JSON.parse(raw) } as T;
+    return { ...fallback, ...JSON.parse(stripBom(raw)) } as T;
   } catch {
     return fallback;
   }

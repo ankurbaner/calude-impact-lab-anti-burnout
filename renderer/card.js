@@ -3,6 +3,22 @@
 // filesystem, or anything about the screen — only the bridge in preload.ts.
 
 /**
+ * Measure the drawn card and ask the main process to fit the window to it.
+ * Card copy varies in length, so a fixed window height either clips the
+ * buttons on long cards or leaves dead space on short ones.
+ */
+const reportHeight = () => {
+  const card = document.querySelector(".card");
+  if (!card) return;
+  const body = document.body;
+  const padding =
+    parseFloat(getComputedStyle(body).paddingTop) +
+    parseFloat(getComputedStyle(body).paddingBottom);
+  // Round up: a fractional shortfall still produces a scrollbar.
+  window.burnout.reportHeight(Math.ceil(card.getBoundingClientRect().height + padding));
+};
+
+/**
  * Render card content into the DOM.
  * @param {object} content - The CardContent object from the main process.
  */
@@ -47,6 +63,9 @@ const render = (content) => {
   } else {
     footnote.hidden = true;
   }
+
+  // Fonts can settle a frame after layout, so measure on the next frame.
+  requestAnimationFrame(reportHeight);
 };
 
 document.getElementById("done").addEventListener("click", () => window.burnout.done());

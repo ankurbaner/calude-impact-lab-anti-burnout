@@ -26,4 +26,13 @@ contextBridge.exposeInMainWorld("burnout", {
   snooze: (): void => {
     ipcRenderer.send("card:snooze");
   },
+  /**
+   * Report the rendered card's height so the window can be sized to fit.
+   * Card copy varies in length, so a fixed window either clips the buttons or
+   * leaves dead space; the renderer is the only place that knows the answer.
+   * @param height - Measured content height in CSS pixels.
+   */
+  reportHeight: (height: number): void => {
+    ipcRenderer.send("card:height", height);
+  },
 });

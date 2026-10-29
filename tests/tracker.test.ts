@@ -6,6 +6,7 @@ import {
   TrackerConfig,
 } from "../src/tracker";
 import { buildCardContent } from "../src/cardContent";
+import { selectExercises, allExercises, MAX_STEPS } from "../src/exercises";
 
 const DAY = "2026-10-29";
 const cfg: TrackerConfig = { idleThresholdSeconds: 60, reminderIntervalSeconds: 1200 };
@@ -96,30 +97,130 @@ describe("bandForStretch — escalation thresholds", () => {
 });
 
 describe("buildCardContent — card copy per band", () => {
+  // Pin the hour: the late-evening footnote is time-dependent, and a test
+  // that passes only before 8pm is worse than no test.
+  const DAYTIME = { rotation: 0, hourOfDay: 14 };
+
   it("under 45 min: eyes only", () => {
-    const c = buildCardContent(30 * 60, 30 * 60);
+    const c = buildCardContent(30 * 60, 30 * 60, DAYTIME);
     expect(c.steps).toHaveLength(1);
     expect(c.steps[0].text).toMatch(/20 feet/);
     expect(c.footnote).toBeUndefined();
+    expect(c.generated).toBe(false);
   });
 
   it("45–90 min: eyes + posture", () => {
-    const c = buildCardContent(60 * 60, 60 * 60);
+    const c = buildCardContent(60 * 60, 60 * 60, DAYTIME);
     expect(c.steps).toHaveLength(2);
     expect(c.steps[1].text).toMatch(/shoulders dropped/i);
   });
 
-  it("over 90 min: eyes + posture + water, no day note yet", () => {
-    const c = buildCardContent(120 * 60, 120 * 60);
-    expect(c.steps).toHaveLength(3);
+  it("over 90 min: eyes, posture, water, plus a movement step", () => {
+    const c = buildCardContent(120 * 60, 120 * 60, DAYTIME);
+    expect(c.steps).toHaveLength(4);
     expect(c.steps[2].text).toMatch(/half a litre/i);
     expect(c.footnote).toBeUndefined();
   });
 
-  it("over 3 hours: same three steps plus the day's-water footnote", () => {
-    const c = buildCardContent(200 * 60, 260 * 60);
-    expect(c.steps).toHaveLength(3);
+  it("over 3 hours: four steps plus the day's-water footnote", () => {
+    const c = buildCardContent(200 * 60, 260 * 60, DAYTIME);
+    expect(c.steps).toHaveLength(4);
     expect(c.footnote).toMatch(/1 litre/i);
+  });
+
+  it("never exceeds the four-step cap, at any band or rotation", () => {
+    for (let rotation = 0; rotation < 12; rotation++) {
+      for (const minutes of [10, 50, 120, 200, 400]) {
+        const c = buildCardContent(minutes * 60, minutes * 60, {
+          rotation,
+          hourOfDay: 14,
+        });
+        expect(c.steps.length).toBeGreaterThan(0);
+        expect(c.steps.length).toBeLessThanOrEqual(MAX_STEPS);
+      }
+    }
+  });
+
+  it("late in the evening it says the day can end, outranking the water note", () => {
+    const c = buildCardContent(200 * 60, 400 * 60, { rotation: 0, hourOfDay: 22 });
+    expect(c.footnote).toMatch(/good place to stop/i);
+  });
+});
+
+describe("buildCardContent — rotation and variety", () => {
+  it("does not repeat the same wording on consecutive cards", () => {
+    const first = buildCardContent(60 * 60, 60 * 60, { rotation: 0, hourOfDay: 14 });
+    const second = buildCardContent(60 * 60, 60 * 60, { rotation: 1, hourOfDay: 14 });
+    expect(second.steps[0].text).not.toBe(first.steps[0].text);
+  });
+
+  it("is deterministic — the same rotation always gives the same card", () => {
+    const a = buildCardContent(120 * 60, 120 * 60, { rotation: 3, hourOfDay: 14 });
+    const b = buildCardContent(120 * 60, 120 * 60, { rotation: 3, hourOfDay: 14 });
+    expect(b.steps).toEqual(a.steps);
+  });
+
+  it("cycles through every eye variant before repeating one", () => {
+    const seen = new Set<string>();
+    for (let rotation = 0; rotation < 4; rotation++) {
+      seen.add(selectExercises(30 * 60, rotation)[0].text);
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("every library entry is a non-empty sentence with an icon", () => {
+    for (const ex of allExercises()) {
+      expect(ex.icon.length).toBeGreaterThan(0);
+      expect(ex.text.trim().length).toBeGreaterThan(0);
+      expect(ex.text.length).toBeLessThanOrEqual(90);
+    }
+  });
+});
+
+describe("buildCardContent — generated suggestions", () => {
+  const generated = {
+    steps: [
+      { icon: "👁️", text: "Soften your focus on the far wall.", focus: "eyes" as const },
+      { icon: "🚶", text: "Stand and walk to the window.", focus: "movement" as const },
+    ],
+    footnote: "That is enough for now.",
+  };
+
+  it("prefers a generated suggestion over the built-in library", () => {
+    const c = buildCardContent(60 * 60, 60 * 60, { rotation: 0, hourOfDay: 14, generated });
+    expect(c.generated).toBe(true);
+    expect(c.steps).toHaveLength(2);
+    expect(c.steps[0].text).toBe("Soften your focus on the far wall.");
+    expect(c.footnote).toBe("That is enough for now.");
+  });
+
+  it("falls back to the library when generation returned nothing", () => {
+    const c = buildCardContent(60 * 60, 60 * 60, {
+      rotation: 0,
+      hourOfDay: 14,
+      generated: null,
+    });
+    expect(c.generated).toBe(false);
+    expect(c.steps).toHaveLength(2);
+    expect(c.steps[0].text).toMatch(/20 feet/);
+  });
+
+  it("falls back when generation returned an empty step list", () => {
+    const c = buildCardContent(60 * 60, 60 * 60, {
+      rotation: 0,
+      hourOfDay: 14,
+      generated: { steps: [], footnote: "ignored" },
+    });
+    expect(c.generated).toBe(false);
+    expect(c.steps[0].text).toMatch(/20 feet/);
+    expect(c.footnote).toBeUndefined();
+  });
+
+  it("keeps the band and counters even when the steps are generated", () => {
+    const c = buildCardContent(200 * 60, 400 * 60, { rotation: 0, hourOfDay: 14, generated });
+    expect(c.band).toBe("eyes-posture-water-day");
+    expect(c.stretchMinutes).toBe(200);
+    expect(c.todayMinutes).toBe(400);
   });
 });
 
