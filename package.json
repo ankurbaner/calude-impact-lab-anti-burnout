@@ -1,7 +1,7 @@
 {
   "name": "anti-burnout-tracker",
   "version": "0.1.0",
-  "description": "A privacy-first screen-time tracker that counts real active time and shows a short recovery card. It never reads, records, or screenshots your screen — the only input is idle-vs-active.",
+  "description": "A privacy-first screen-time tracker that counts real active time and shows a short recovery card. The only OS input is idle-vs-active — it never reads, records, or screenshots your screen. Cards come from a built-in exercise library, or optionally from Claude when you enable it and supply a key.",
   "author": "Guillermo Motze Espina",
   "license": "MIT",
   "main": "dist/main.js",
@@ -11,7 +11,10 @@
     "dev": "npm run build && electron . --dev",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "dist": "npm run build && electron-builder --mac"
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "icons": "node tools/make-tray-icon.js"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -27,12 +30,20 @@
     "productName": "Anti-Burnout",
     "files": [
       "dist/**/*",
-      "renderer/**/*"
+      "renderer/**/*",
+      "assets/**/*"
     ],
     "mac": {
       "category": "public.app-category.healthcare-fitness",
       "target": "dmg",
       "LSUIElement": true
+    },
+    "win": {
+      "target": "nsis"
     }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "zod": "^4.6.7"
   }
 }

@@ -36,6 +36,9 @@
         -webkit-user-select: none;
         user-select: none;
         padding: 10px;
+        /* The window is resized to the measured content, so a scrollbar here
+           would only ever be a transient artefact mid-resize. */
+        overflow: hidden;
       }
 
       .card {
