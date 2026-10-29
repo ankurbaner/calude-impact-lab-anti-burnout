@@ -1,0 +1,38 @@
+{
+  "name": "anti-burnout-tracker",
+  "version": "0.1.0",
+  "description": "A privacy-first screen-time tracker that counts real active time and shows a short recovery card. It never reads, records, or screenshots your screen — the only input is idle-vs-active.",
+  "author": "Guillermo Motze Espina",
+  "license": "MIT",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "dist": "npm run build && electron-builder --mac"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.5",
+    "typescript": "^5.4.5"
+  },
+  "build": {
+    "appId": "com.motze.antiburnout",
+    "productName": "Anti-Burnout",
+    "files": [
+      "dist/**/*",
+      "renderer/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.healthcare-fitness",
+      "target": "dmg",
+      "LSUIElement": true
+    }
+  }
+}

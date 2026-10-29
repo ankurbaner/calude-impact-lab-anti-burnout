@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self';" />
+    <title>Recovery card</title>
+    <style>
+      :root {
+        --bg: rgba(255, 255, 255, 0.92);
+        --fg: #1b1d22;
+        --muted: #6b7280;
+        --accent: #2f8f6b;
+        --accent-fg: #ffffff;
+        --chip: rgba(47, 143, 107, 0.12);
+        --border: rgba(0, 0, 0, 0.06);
+        --btn-ghost: rgba(0, 0, 0, 0.05);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: rgba(28, 30, 36, 0.94);
+          --fg: #eef0f4;
+          --muted: #9aa2b1;
+          --accent: #3fae84;
+          --accent-fg: #06130d;
+          --chip: rgba(63, 174, 132, 0.16);
+          --border: rgba(255, 255, 255, 0.08);
+          --btn-ghost: rgba(255, 255, 255, 0.08);
+        }
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { background: transparent; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+        color: var(--fg);
+        -webkit-user-select: none;
+        user-select: none;
+        padding: 10px;
+      }
+
+      .card {
+        background: var(--bg);
+        -webkit-backdrop-filter: saturate(140%) blur(18px);
+        backdrop-filter: saturate(140%) blur(18px);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        padding: 18px 18px 16px;
+        -webkit-app-region: drag;
+      }
+
+      .eyebrow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .eyebrow .chip {
+        background: var(--chip);
+        color: var(--accent);
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      h1 { font-size: 19px; font-weight: 650; margin-bottom: 12px; }
+
+      ul { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+      li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.35; }
+      li .icon { font-size: 16px; line-height: 1.3; flex: 0 0 auto; }
+
+      .footnote {
+        margin-top: 12px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+      }
+
+      .reminder {
+        margin-top: 10px;
+        font-size: 11.5px;
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        -webkit-app-region: no-drag;
+      }
+      button {
+        flex: 1;
+        border: none;
+        border-radius: 11px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      button.primary { background: var(--accent); color: var(--accent-fg); }
+      button.ghost { background: var(--btn-ghost); color: var(--fg); flex: 0 0 auto; }
+      button:active { transform: translateY(1px); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="eyebrow">
+        <span id="meta">at the screen</span>
+        <span class="chip" id="chip">now</span>
+      </div>
+      <h1 id="heading">Time for a short reset</h1>
+      <ul id="steps"></ul>
+      <p class="footnote" id="footnote" hidden></p>
+      <p class="reminder">This break is for you — not for more work.</p>
+      <div class="actions">
+        <button class="primary" id="done">Done</button>
+        <button class="ghost" id="snooze">Snooze</button>
+      </div>
+    </div>
+    <script src="card.js"></script>
+  </body>
+</html>
